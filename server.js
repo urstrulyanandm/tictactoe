@@ -1,20 +1,22 @@
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-app.use(express.static('public'));
+// Serve static files
+app.use(express.static(path.join(__dirname, 'public')));
 
+// Game state per room
 const rooms = new Map();
 
 wss.on('connection', (ws) => {
   ws.on('message', (message) => {
-    console.log('RAW MESSAGE:', message.toString());
     const data = JSON.parse(message);
-
+    
     if (data.type === 'join') {
       const roomId = data.room;
       console.log('Player joining room:', roomId);
@@ -29,6 +31,7 @@ wss.on('connection', (ws) => {
       }
 
       const room = rooms.get(roomId);
+
       if (room.players.length >= 2) {
         ws.send(JSON.stringify({ type: 'full' }));
         return;
@@ -56,27 +59,12 @@ wss.on('connection', (ws) => {
       if (!room) return;
 
       const index = data.index;
-
-      // Extra log to verify flow
-      console.log(`[MOVE RECV] Player ${ws.symbol} -> index ${index}`);
-      console.log('[Before move board]', JSON.stringify(room?.board));
-
-      // Safety fallback
-      if (!Array.isArray(room.board) || room.board.length !== 9) {
-        room.board = Array(9).fill(null);
-      }
-
       if (room.board[index] !== null || room.turn !== ws.symbol || room.winner) return;
 
       room.board[index] = ws.symbol;
 
-      // Debug current board state
-      console.log('[Board State]', JSON.stringify(room.board));
-
       const winner = checkWinner(room.board);
       const isDraw = !winner && room.board.every(cell => cell !== null);
-
-      console.log('[Game Check] winner:', winner, '| isDraw:', isDraw);
 
       if (winner) {
         room.winner = winner;

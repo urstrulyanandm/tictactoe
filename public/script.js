@@ -1,4 +1,5 @@
-const socket = new WebSocket(`ws://${location.host}`);
+const socket = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
+
 let playerSymbol = null;
 let currentTurn = null;
 let gameOver = false;
@@ -40,7 +41,6 @@ socket.addEventListener('message', (event) => {
     winningLine = msg.winningLine || [];
     createBoard(msg.board);
 
-    // Corrected draw/winner handling
     if (msg.winner === 'X' || msg.winner === 'O') {
       document.getElementById('status').textContent = `${msg.winner} wins!`;
       document.getElementById('restartBtn').style.display = 'inline-block';
